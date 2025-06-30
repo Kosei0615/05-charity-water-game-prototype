@@ -134,39 +134,39 @@ function startClearFlowGame() {
     window.onkeydown = handleKey;
 
     // --- Touch controls for mobile (swipe) ---
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchMoved = false;
-    boardDiv.ontouchstart = function(e) {
-        if (e.touches.length === 1) {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-            touchMoved = false;
-        }
-    };
-    boardDiv.ontouchmove = function(e) {
-        // Prevent scrolling while swiping on the board
-        if (e.touches.length === 1) {
-            e.preventDefault();
-            touchMoved = true;
-        }
-    };
-    boardDiv.ontouchend = function(e) {
-        if (gameOver) return;
-        if (e.changedTouches.length === 1 && touchMoved) {
-            const dx = e.changedTouches[0].clientX - touchStartX;
-            const dy = e.changedTouches[0].clientY - touchStartY;
-            if (Math.abs(dx) > Math.abs(dy)) {
-                // Horizontal swipe
-                if (dx > 30) handleKey({key: 'ArrowRight'});
-                else if (dx < -30) handleKey({key: 'ArrowLeft'});
-            } else {
-                // Vertical swipe
-                if (dy > 30) handleKey({key: 'ArrowDown'});
-                else if (dy < -30) handleKey({key: 'ArrowUp'});
+    function setupCFMobileTouch() {
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchMoved = false;
+        boardDiv.ontouchstart = function(e) {
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchMoved = false;
             }
-        }
-    };
+        };
+        boardDiv.ontouchmove = function(e) {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                touchMoved = true;
+            }
+        };
+        boardDiv.ontouchend = function(e) {
+            if (gameOver) return;
+            if (e.changedTouches.length === 1 && touchMoved) {
+                const dx = e.changedTouches[0].clientX - touchStartX;
+                const dy = e.changedTouches[0].clientY - touchStartY;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    if (dx > 30) handleKey({key: 'ArrowRight'});
+                    else if (dx < -30) handleKey({key: 'ArrowLeft'});
+                } else {
+                    if (dy > 30) handleKey({key: 'ArrowDown'});
+                    else if (dy < -30) handleKey({key: 'ArrowUp'});
+                }
+            }
+        };
+    }
+    setupCFMobileTouch();
 
     // Reset button resets the game
     document.getElementById('cf-reset').onclick = () => {
@@ -581,7 +581,6 @@ function startPuzzlePipeline(levelIndex = 0) {
                                 const val2 = grid[rr][cc];
                                 const last = drawing.path[drawing.path.length - 1];
                                 if (isAdjacent(last, [rr, cc]) && !isCellBlocked([rr, cc], drawing.number)) {
-                                    // If endpoint and matches, finish path
                                     if (val2 === drawing.number && !drawing.path.some(([pr, pc]) => pr === rr && pc === cc) && endpoints[drawing.number].some(([er, ec]) => er === rr && ec === cc)) {
                                         drawing.path.push([rr, cc]);
                                         paths[drawing.number] = drawing.path.slice();
@@ -591,7 +590,6 @@ function startPuzzlePipeline(levelIndex = 0) {
                                         checkWin();
                                         return;
                                     }
-                                    // If empty or already in path, continue
                                     if (!drawing.path.some(([pr, pc]) => pr === rr && pc === cc) && !val2) {
                                         drawing.path.push([rr, cc]);
                                         lastCell = [rr, cc];
@@ -615,15 +613,80 @@ function startPuzzlePipeline(levelIndex = 0) {
                 boardDiv.appendChild(cell);
             }
         }
+        setupPPTouchEvents();
     }
-    // Mouse up anywhere ends drag
-    document.onmouseup = () => {
-        if (drawing) {
-            drawing = null;
-            drawBoard();
-        }
-    };
-    // Helpers
+    // --- Improved touch events for mobile drag ---
+    function setupPPTouchEvents() {
+        // Remove previous listeners by replacing the node
+        const oldBoard = boardDiv;
+        const newBoard = oldBoard.cloneNode(true);
+        oldBoard.parentNode.replaceChild(newBoard, oldBoard);
+        // Re-assign boardDiv to the new node
+        boardDiv = newBoard;
+        // Now attach listeners
+        let lastCell = null;
+        boardDiv.addEventListener('touchstart', function(e) {
+            if (solved) return;
+            const touch = e.touches[0];
+            const boardRect = boardDiv.getBoundingClientRect();
+            const colW = boardRect.width / size;
+            const rowH = boardRect.height / size;
+            const cc = Math.floor((touch.clientX - boardRect.left) / colW);
+            const rr = Math.floor((touch.clientY - boardRect.top) / rowH);
+            if (rr >= 0 && rr < size && cc >= 0 && cc < size) {
+                const val = grid[rr][cc];
+                const nextNum = getNextNumberToConnect();
+                if (val && val === nextNum) {
+                    drawing = { number: val, path: [[rr, cc]] };
+                    lastCell = [rr, cc];
+                    drawBoard();
+                }
+            }
+            e.preventDefault();
+        }, {passive: false});
+        boardDiv.addEventListener('touchmove', function(e) {
+            if (!drawing || solved) return;
+            const touch = e.touches[0];
+            const boardRect = boardDiv.getBoundingClientRect();
+            const colW = boardRect.width / size;
+            const rowH = boardRect.height / size;
+            const cc = Math.floor((touch.clientX - boardRect.left) / colW);
+            const rr = Math.floor((touch.clientY - boardRect.top) / rowH);
+            if (rr >= 0 && rr < size && cc >= 0 && cc < size) {
+                if (!lastCell || lastCell[0] !== rr || lastCell[1] !== cc) {
+                    const val2 = grid[rr][cc];
+                    const last = drawing.path[drawing.path.length - 1];
+                    if (isAdjacent(last, [rr, cc]) && !isCellBlocked([rr, cc], drawing.number)) {
+                        if (val2 === drawing.number && !drawing.path.some(([pr, pc]) => pr === rr && pc === cc) && endpoints[drawing.number].some(([er, ec]) => er === rr && ec === cc)) {
+                            drawing.path.push([rr, cc]);
+                            paths[drawing.number] = drawing.path.slice();
+                            drawing = null;
+                            lastCell = null;
+                            drawBoard();
+                            checkWin();
+                            return;
+                        }
+                        if (!drawing.path.some(([pr, pc]) => pr === rr && pc === cc) && !val2) {
+                            drawing.path.push([rr, cc]);
+                            lastCell = [rr, cc];
+                            drawBoard();
+                        }
+                    }
+                }
+            }
+            e.preventDefault();
+        }, {passive: false});
+        boardDiv.addEventListener('touchend', function(e) {
+            if (drawing) {
+                drawing = null;
+                lastCell = null;
+                drawBoard();
+            }
+            e.preventDefault();
+        }, {passive: false});
+    }
+
+    // Helper
     function isAdjacent(a, b) {
         const dr = Math.abs(a[0] - b[0]);
         const dc = Math.abs(a[1] - b[1]);
