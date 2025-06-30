@@ -544,86 +544,14 @@ function startPuzzlePipeline(levelIndex = 0) {
                         drawBoard();
                     }
                 };
-                // --- Improved touch events for mobile drag ---
-                // We'll track touch on the board, not just cells
-                // So only add these once per board, not per cell
-                if (!boardDiv._touchSetup) {
-                    let lastCell = null;
-                    boardDiv.addEventListener('touchstart', function(e) {
-                        if (solved) return;
-                        const touch = e.touches[0];
-                        const boardRect = boardDiv.getBoundingClientRect();
-                        const colW = boardRect.width / size;
-                        const rowH = boardRect.height / size;
-                        const cc = Math.floor((touch.clientX - boardRect.left) / colW);
-                        const rr = Math.floor((touch.clientY - boardRect.top) / rowH);
-                        if (rr >= 0 && rr < size && cc >= 0 && cc < size) {
-                            const val = grid[rr][cc];
-                            const nextNum = getNextNumberToConnect();
-                            if (val && val === nextNum) {
-                                drawing = { number: val, path: [[rr, cc]] };
-                                lastCell = [rr, cc];
-                                drawBoard();
-                            }
-                        }
-                        e.preventDefault();
-                    }, {passive: false});
-                    boardDiv.addEventListener('touchmove', function(e) {
-                        if (!drawing || solved) return;
-                        const touch = e.touches[0];
-                        const boardRect = boardDiv.getBoundingClientRect();
-                        const colW = boardRect.width / size;
-                        const rowH = boardRect.height / size;
-                        const cc = Math.floor((touch.clientX - boardRect.left) / colW);
-                        const rr = Math.floor((touch.clientY - boardRect.top) / rowH);
-                        if (rr >= 0 && rr < size && cc >= 0 && cc < size) {
-                            if (!lastCell || lastCell[0] !== rr || lastCell[1] !== cc) {
-                                const val2 = grid[rr][cc];
-                                const last = drawing.path[drawing.path.length - 1];
-                                if (isAdjacent(last, [rr, cc]) && !isCellBlocked([rr, cc], drawing.number)) {
-                                    if (val2 === drawing.number && !drawing.path.some(([pr, pc]) => pr === rr && pc === cc) && endpoints[drawing.number].some(([er, ec]) => er === rr && ec === cc)) {
-                                        drawing.path.push([rr, cc]);
-                                        paths[drawing.number] = drawing.path.slice();
-                                        drawing = null;
-                                        lastCell = null;
-                                        drawBoard();
-                                        checkWin();
-                                        return;
-                                    }
-                                    if (!drawing.path.some(([pr, pc]) => pr === rr && pc === cc) && !val2) {
-                                        drawing.path.push([rr, cc]);
-                                        lastCell = [rr, cc];
-                                        drawBoard();
-                                    }
-                                }
-                            }
-                        }
-                        e.preventDefault();
-                    }, {passive: false});
-                    boardDiv.addEventListener('touchend', function(e) {
-                        if (drawing) {
-                            drawing = null;
-                            lastCell = null;
-                            drawBoard();
-                        }
-                        e.preventDefault();
-                    }, {passive: false});
-                    boardDiv._touchSetup = true;
-                }
                 boardDiv.appendChild(cell);
             }
         }
         setupPPTouchEvents();
     }
     // --- Improved touch events for mobile drag ---
-    function setupPPTouchEvents() {
-        // Remove previous listeners by replacing the node
-        const oldBoard = boardDiv;
-        const newBoard = oldBoard.cloneNode(true);
-        oldBoard.parentNode.replaceChild(newBoard, oldBoard);
-        // Re-assign boardDiv to the new node
-        boardDiv = newBoard;
-        // Now attach listeners
+    // Attach only once per game session
+    if (!boardDiv._touchSetup) {
         let lastCell = null;
         boardDiv.addEventListener('touchstart', function(e) {
             if (solved) return;
@@ -684,6 +612,7 @@ function startPuzzlePipeline(levelIndex = 0) {
             }
             e.preventDefault();
         }, {passive: false});
+        boardDiv._touchSetup = true;
     }
 
     // Helper
