@@ -882,6 +882,11 @@ function startPuzzlePipelineMobile(levelIndex = 0) {
     }
     // --- Touch controls for path drawing ---
     let lastCell = null;
+    // Prevent scrolling when touching the board
+    boardDiv.addEventListener('touchmove', function(e) {
+        // Prevent the page from scrolling while playing
+        e.preventDefault();
+    }, { passive: false });
     boardDiv.ontouchstart = function(e) {
         if (solved) return;
         const touch = e.touches[0];
@@ -899,6 +904,7 @@ function startPuzzlePipelineMobile(levelIndex = 0) {
     };
     boardDiv.ontouchmove = function(e) {
         if (!drawing || solved) return;
+        // Prevent the page from scrolling while dragging
         e.preventDefault();
         const touch = e.touches[0];
         const target = document.elementFromPoint(touch.clientX, touch.clientY);
