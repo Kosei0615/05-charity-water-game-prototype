@@ -43,6 +43,43 @@ function showMainMenu() {
     gameSection.style.display = 'none';
     celebrationSection.style.display = 'none';
     updateProgress();
+    // Ensure the mobile button is always present after registration
+    if (!document.getElementById('play-puzzle-pipeline-mobile') && document.getElementById('play-puzzle-pipeline')) {
+        const playPuzzlePipelineBtn = document.getElementById('play-puzzle-pipeline');
+        const mobileBtn = document.createElement('button');
+        mobileBtn.className = 'main-btn';
+        mobileBtn.id = 'play-puzzle-pipeline-mobile';
+        mobileBtn.textContent = 'Puzzle Pipeline (Mobile)';
+        playPuzzlePipelineBtn.parentElement.appendChild(mobileBtn);
+        mobileBtn.onclick = () => {
+            mainMenu.style.display = 'none';
+            gameSection.style.display = '';
+            celebrationSection.style.display = 'none';
+            // Show the mobile Puzzle Pipeline game
+            gameSection.innerHTML = `
+                <h2>🔗 Puzzle Pipeline (Mobile)</h2>
+                <div id="pp-instructions-mobile">Draw a path with your finger to connect the numbers in order!</div>
+                <div class="pp-board" id="pp-board-mobile"></div>
+                <div class="pp-controls">
+                    <button class="main-btn" id="pp-reset-mobile">Reset</button>
+                    <button class="main-btn" id="pp-next-level-mobile">Next Level</button>
+                    <button class="main-btn" id="back-menu-mobile">Back to Menu</button>
+                </div>
+                <div id="pp-message-mobile"></div>
+            `;
+            let currentLevel = 0;
+            function launchMobileLevel(levelIdx) {
+                startPuzzlePipelineMobile(levelIdx);
+                document.getElementById('pp-next-level-mobile').onclick = () => {
+                    currentLevel = (levelIdx + 1) % 5;
+                    launchMobileLevel(currentLevel);
+                };
+                document.getElementById('pp-reset-mobile').onclick = () => launchMobileLevel(levelIdx);
+            }
+            launchMobileLevel(currentLevel);
+            document.getElementById('back-mobile').onclick = showMainMenu;
+        };
+    }
 }
 
 // Show celebration screen
